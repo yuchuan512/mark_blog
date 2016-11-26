@@ -463,10 +463,73 @@ public static void main(String[] args) throws InterruptedException {
     }
 ```
 
+ExecutorService可以使用remove方法移除未被执行的任务，前提是任务是使用execute()方式提交的；如果使用submit提交的任务，未被执行也不能删除此任务。
 
+ExecutorService中submit和execute的区别
+1. 接受的参数不一样
+ * ExecutorService中的方法
+  * Future<?> submit(Runnable task);
+  * <T> Future<T> submit(Runnable task, T result);
+  * <T> Future<T> submit(Callable<T> task);
+ * Executor 接口唯一方法
+  * void execute(Runnable command);
+2. submit有返回值，而execute没有
+3. submit方便Exception处理
 
+```
+public class ExecutorTest {
+    public static void main(String[] args) throws InterruptedException {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        // execute方式
+        pool.execute(new RunnableTest("Task1"));
+        // submit方式
+        Future<?> future = pool.submit(new RunnableTest("Task2"));
+        try{
+            if(future.get()==null){
+                System.out.println("任务完成");
+            }
+        } catch (ExecutionException e) {
+            System.out.println(e.getCause().getMessage());
+            e.printStackTrace();
+        }
+    }
+    static class RunnableTest implements Runnable{
+        private String taskName;
+        public RunnableTest(String taskName){
+            this.taskName = taskName;
+        }
+        @Override
+        public void run() {
+            System.out.println("inside "+taskName);
+            throw new RuntimeException("Runtime Exception from inside " + taskName);
+        }
+    }
+}
+```
+get方法测试
+getActiveCount()正在执行任务的线程
+getPoolSize() 线程池中总共的线程
+getCompletedTaskCount()  已经任务执行完毕的线程
 
-
+```
+public class ExecutorTest {
+    public static void main(String[] args) throws InterruptedException {
+        try{
+            MyRunnable2 myrunnable = new MyRunnable2();
+            SynchronousQueue<Runnable> queue = new SynchronousQueue<>();
+            ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 5, 5, TimeUnit.SECONDS, queue);
+            pool.execute(myrunnable);
+            pool.execute(myrunnable);
+            pool.execute(myrunnable);
+            System.out.println(pool.getActiveCount()+"  " + pool.getPoolSize());
+            Thread.sleep(7000);
+            System.out.println(pool.getActiveCount()+"  " + pool.getPoolSize());
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }
+    }
+}
+```
 
 
 
