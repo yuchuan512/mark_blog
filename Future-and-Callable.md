@@ -61,4 +61,44 @@ public class RunTest {
 }
 
 ```
+### Future缺点
+使用线程池时，默认情况下也是使用FutureTask作为接口Future的实现类，也就是说在使用Future和Callable的情况下，使用Future就是在使用FutureTask类。
+```
+public class FutureTask<V> implements RunnableFuture<V>
+public interface RunnableFuture<V> extends Runnable, Future<V>
+```
+Future接口调用get()是阻塞性的，一直阻塞到此任务完成为止。
+```
+public class RunTest {
+    public static void main(String[] args){
+        MyCallable callable1 = new MyCallable("username1", 5000);
+        MyCallable callable2 = new MyCallable("username2", 4000);
+        MyCallable callable3 = new MyCallable("username3", 3000);
+        MyCallable callable4 = new MyCallable("username4", 2000);
+        MyCallable callable5 = new MyCallable("username5", 1000);
+        ArrayList<Callable> callableList = new ArrayList<Callable>();
+        callableList.add(callable1);
+        callableList.add(callable2);
+        callableList.add(callable3);
+        callableList.add(callable4);
+        callableList.add(callable5);
+        List<Future> futureList = new ArrayList<Future>();
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 5, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+        for(int i=0;i<5;i++){
+            futureList.add(executor.submit(callableList.get(i)));
+        }
+        System.out.println("run first time " + System.currentTimeMillis());
+        for(int i=0;i<5;i++){
+            try {
+                // 一个future对应一个指定的callable，按顺序的
+                System.out.println(futureList.get(i).get()+" " + System.currentTimeMillis());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
 

@@ -407,7 +407,7 @@ Runnable7 run
 }
 ```
 4. DiscardPolicy
-``
+```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
         MyRunnable2 myrunnable = new MyRunnable2();
@@ -467,15 +467,70 @@ ExecutorService可以使用remove方法移除未被执行的任务，前提是�
 
 ExecutorService中submit和execute的区别
 1. 接受的参数不一样
- * ExecutorService中的方法
-  * Future<?> submit(Runnable task);
-  * <T> Future<T> submit(Runnable task, T result);
-  * <T> Future<T> submit(Callable<T> task);
- * Executor 接口唯一方法
-  * void execute(Runnable command);
+ExecutorService中的方法
+```
+1) Future<?> submit(Runnable task);
+2) <T> Future<T> submit(Runnable task, T result);
+3) <T> Future<T> submit(Callable<T> task);
+```
+Executor 接口唯一方法
+```
+void execute(Runnable command);
+```
 2. submit有返回值，而execute没有
 3. submit方便Exception处理
-
+submit可以直接捕获异常，通过catch ExecutionException的方式
+```
+public class RunTest {
+    public static void main(String[] args){
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(50, 50, 5, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+        Future future = executor.submit(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                Integer.parseInt("a");
+                return "我是返回值";
+            }
+        });
+        try {
+            System.out.println(future.get());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            System.out.println("捕获到异常");
+            e.printStackTrace();
+        }
+    }
+}
+```
+execute捕获异常需要通过自定义ThreadFactory的方式进行捕获
+```
+public class RunTest {
+    public static void main(String[] args){
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(50, 50, 5, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+        executor.setThreadFactory(new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r);
+                t.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                    @Override
+                    public void uncaughtException(Thread t, Throwable e) {
+                        System.out.println("execute()使用自定义方法捕获异常");
+                        e.printStackTrace();
+                    }
+                });
+                return t;
+            }
+        });
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                Integer.parseInt("a");
+            }
+        });
+    }
+}
+```
+Test
 ```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
@@ -531,6 +586,27 @@ public class ExecutorTest {
 }
 ```
 
+### 自定义拒绝策略
+接口RejectedExecutionHandler的主要作用是当线程池关闭后依然有任务要执行时，可以实现一些处理
+```
+public class RunTest {
+    public static void main(String[] args){
+        ExecutorService service = Executors.newCachedThreadPool();
+        ThreadPoolExecutor executor = (ThreadPoolExecutor)service;
+        executor.setRejectedExecutionHandler(new RejectedExecutionHandler() {
+            @Override
+            public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+                System.out.println(((FutureTask)r).toString()+" is rejected!");
+            }
+        });
+        service.submit(new MyRunnable("A"));
+        service.submit(new MyRunnable("B"));
+        service.submit(new MyRunnable("C"));
+        executor.shutdown();
+        service.submit(new MyRunnable("D"));
+    }
+}
+```
 
 
 
