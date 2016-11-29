@@ -4,31 +4,37 @@ categories:
 tags:
 ---
 ### Semaphore 可以控制线程的数量
-semaphore.acquire()
-semaphore.release()
-semaphore.availablePermits()  可用许可证数量
-semaphore.acquireUniterruptibly()  获取许可证过程中不允许被中断
+Semaphore [ˈseməfɔ:(r)] 信号、信号系统
+acquire和release获取释放许可证。
+Semaphore semaphore = new Semaphore(n) 同一时刻可以有n个线程并发执行
+semaphore.acquire() / acquire(int permits)   一次获取n个许可
+semaphore.release() / release(int permits)   一次释放n个许可
+semaphore.availablePermits()  可用许可证数量  
+semaphore.acquireUninterruptibly()  获取许可证过程中不允许被中断(acquire()默认可以被中断)
 semaphore.availablePermits()  可用许可证数量
 semaphore.drainPermits()  返回立即可用的许可证数量，并且将许可证数量置0
 semaphore.getQueueLength()   等待许可证的线程数量
 semaphore.hasQueuedThreads() 是否有线程等待许可证
+semaphore.tryAcquire()   尝试获取许可证，不阻塞，获取不到返回false
+semaphore.tryAcquire(int permits) 
+semaphore.tryAcquire(long timeout, TimeUnit unit)  在制定时间内获取许可证，获取不到返回false
+semaphore.tryAcquire(long timeout, TimeUnit unit)
+Semaphore semaphore = new Semaphore(1, isFair)  是否获取公平许可证
 公平信号量运行的效果是线程启动的顺序与调用semaphore.acquire()的顺序有关，先启动的线程优先获得许可
 
 semaphore.tryAcquire(long timeout,TimeUnit unit)
 多进路-多处理-多出路
-多进路-单处理-多出路 使用ReentrantLock 加锁单处理部分
+多进路-单处理-多出路 使用ReentrantLock 加锁部分单处理
 
 Condition可以替代传统的线程间通信，**用await()替换wait()，用signal()替换notify()，用signalAll()替换notifyAll()。**
 使用Semaphore完成生产者消费者
 ```
 import java.util.concurrent.Semaphore;
 public class Main {
-
     static class SharedData{
-        int data = 0;0
+        int data = 0;
         Semaphore semproducer = new Semaphore(1);
         Semaphore semconsume  = new Semaphore(0);
-
         public int consume() {
             try {
                 semconsume.acquire();
@@ -41,9 +47,7 @@ public class Main {
             }
             System.out.println("availableSemconsume " + semconsume.availablePermits());
             return data;
-
         }
-
         public void produce(int data){
             try {
                 semproducer.acquire();
@@ -56,17 +60,13 @@ public class Main {
                 semconsume.release();
             }
             System.out.println("availableproonsume " + semproducer.availablePermits());
-
         }
     }
-
     static class ConsumeThread implements Runnable{
         private SharedData sharedData;
-
         public ConsumeThread(SharedData sharedData){
             this.sharedData = sharedData;
         }
-
         @Override
         public void run() {
             for(int i=0;i<30;i++){
@@ -78,14 +78,11 @@ public class Main {
             }
         }
     }
-
     static class ProduceThread implements Runnable{
         private SharedData sharedData;
-
         public ProduceThread(SharedData sharedData){
             this.sharedData = sharedData;
         }
-
         @Override
         public void run() {
                 for(int i=0;i<30;i++){
@@ -97,30 +94,26 @@ public class Main {
                 }
         }
     }
-
     public static void main(String[] args) throws InterruptedException {
         SharedData sharedData = new SharedData();
         Thread producer = new Thread(new ProduceThread(sharedData),"producer");
         Thread consumer = new Thread(new ConsumeThread(sharedData),"consumer");
         consumer.start();
         producer.start();
-
     }
 }
 ```
 
 ### CountDownLatch
-判断count计数不为0时，则当前线程呈wait状态，在屏障处等待。实际等待与继续运行的效果分别需要使用await()和countdown()方法来进行。调用countDown()方法将计数减1，当计数减到0时，等待的线程继续运行。而方法getCount()就是获得当前的计数个数。
+判断count计数不为0时，则当前线程呈wait状态，在屏障处等待。等待或者运行效果分别需要使用await()和countdown()方法来进行。调用countDown()方法将计数减1，当计数减到0时，等待的线程继续运行。而方法getCount()就是获得当前的计数个数。
 计数无法被重置，如果需要重置计数，可以使用CyclicBarrier类
-多个线程与同步点间阻塞的特性，线程必须都到达同步点。
+##### CountDwonLatch 用法
 ```
 public class CountThread extends Thread {
     private CountDownLatch maxRunner;
-
     public CountThread(CountDownLatch maxRunner) {
         this.maxRunner = maxRunner;
     }
-
     @Override
     public void run() {
         try {
@@ -131,7 +124,6 @@ public class CountThread extends Thread {
         }
     }
 }
-
 public class CountDownTest {
     public static void main(String[] args) throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(10);
@@ -141,13 +133,14 @@ public class CountDownTest {
             ct[i].setName("thread--  " + (i+1));
             ct[i].start();
         }
+        // 等待计数为0，继续运行
         countDownLatch.await();
         System.out.println("all come !");
     }
 }
-
 ```
-await(long timeout, TimeUnit unit)用法
+##### await(long timeout, TimeUnit unit)用法
+当前线程等待计数为0或者超时
 ```
 public class MyService {
     private CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -177,7 +170,8 @@ public class CountDownTest {
     }
 }
 ```
-使用CountDownLatch完成比赛流程
+##### 使用CountDownLatch完成比赛流程
+多个对象之间持有同一个CountDonwLatch对象来完成同步等待效果
 ```
 public class MyThread extends Thread {
 
@@ -214,7 +208,6 @@ public class MyThread extends Thread {
             } catch (InterruptedException e) {
                 e.printStackTrace();
         }
-
     }
 }
 
@@ -244,10 +237,12 @@ public class CountDownTest {
     }
 }
 
+*CountDwonLatch的内部使用了Sync类（Semaphore 的内部也使用了Sync类），此类继承 AbstractQueuedSynchronizer(AQS)*
+
 ```
 
 ### CyclicBarrier ['saiklik]
-
+CyclicBarrier [ˈsaɪklɪk] 允许一组线程相互等待，直到到达某个公共屏障点
 1) CountDownLatch 一个线程或者多个线程，等待另外一个线程或多个线程完成某个事情之后才能继续执行。
 2) CyclicBarrier 多个线程之间相互等待，任何一个线程完成之前，所有的线程都必须相互等待。
 ```
@@ -289,9 +284,9 @@ public class Test {
 }
 
 ```
- * CyclicBarrier也支持分批进行比赛的效果。
+* CyclicBarrier也支持分批操作。*
+##### 方法getNumberWaiting和getParties
 
-方法getNumberWaiting和getParties
 ```
 public class MyService {
     CyclicBarrier cyclicBarrier = new CyclicBarrier(3, new Runnable() {
@@ -339,9 +334,7 @@ public class Test {
 }
 
 
-```
 结果
-```
 Thread-0 准备
 C 准备
 Thread-1 准备
@@ -349,7 +342,7 @@ parties is 3
 thread is waiting 2
 ```
 
-验证屏障重置
+##### 验证屏障重置
 ```
 
 public class MyThread extends Thread{

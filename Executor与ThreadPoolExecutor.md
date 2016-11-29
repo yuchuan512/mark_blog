@@ -1,9 +1,28 @@
-title: Executors用法
+title: Executor与ThreadPoolExecutor
 date: 2016-11-26 18:31:52
 categories:
 tags:
 ---
-Executors
+### 创建线程池
+ * 创建无界线程池
+```
+ExecutorService executor = Executors.newCachedThreadPool();
+```
+ * 创建固定数量的线程池
+```
+ExecutorService executorService = Executors.newFixedThreadPool(3);
+```
+ * 创建单一线程的线程池
+```
+ExecutorService executorService = Executors.newSingleThreadExecutor();
+```
+ * 创建定时或周期任务的线程池
+```
+ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(3);
+```
+
+### 使用Executors创建线程池
+一般使用Executors的静态方法创建线程池，需要定制化可以使用ThreadPoolExecutor类进行详细参数设定。
 ```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
@@ -31,8 +50,8 @@ public class ExecutorTest {
 }
 
 ```
-可以观察到线程池里面的线程得到了复用，因为线程池线程名称唯一（从源码可以看出默认新创建的线程会保持60秒)
-使用Executors的静态方法底层都是调用了ThreadPoolExecutor类
+可以观察到使用newCachedThreadPool创建的线程池里面的线程得到了复用，因为线程池线程名称唯一（从源码可以看出默认新创建的线程会保持60秒)
+**使用Executors的静态方法底层是调用了ThreadPoolExecutor类**
 ```
 public static ExecutorService newCachedThreadPool() {
         return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -41,7 +60,7 @@ public static ExecutorService newCachedThreadPool() {
     }
 ```
 
-使用newCachedThreadPool(ThreadFactory) 定制线程工厂
+### 使用newCachedThreadPool(ThreadFactory) 替换默认线程工厂
 ```
 public class MyThreadFactory implements ThreadFactory{
     @Override
@@ -63,22 +82,22 @@ public class ExecutorTest {
                 System.out.println("running " + Thread.currentThread().getName());
             }
         });
-
     }
 }
 ```
-限制线程池里面的数量，使用固定线程池线程数量的方式，保证最大不超过3个
-ExecutorService executorService = Executors.newFixedThreadPool(3);
 
-创建单一线程的线程池
-ExecutorService executorService = Executors.newSingleThreadExecutor();
+ThreadPoolExecutor 使用Executors的静态方法底层都是调用了ThreadPoolExecutor类 
+```
+ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue) 
+```
 
-ThreadPoolExecutor 使用Executors的静态方法底层都是调用了ThreadPoolExecutor类 ThreadPoolExecutor(int corePoolSize, int maximumPoolSize,
-long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue) 如果线程数量 < corePoolSize 则直接执行任务，不放入扩展队列Queue中ThreadPoolEx executor = new ThreadPoolExecutor(7,8,5,TimeUnit.SECONDS,new LinkedBlockingDeque<Runnable>())
-如果corePoolSize < 线程数量 < maximumPoolSize
-且队列使用LinkedBlockingDeque，则放入队列；如果队列使用SynchronousQueue类，会立即执行，且当时间keepAliveTime超过5秒时，清除空闲线程。 BlockingQueue 常用的实现类
-LinkedBlockingQueue 和ArrayBlockingQueue。用 LinkedBlockingQueue
-的好处在于没有大小限制，所以执行execute()不会抛出异常。线程池中运行的线程数也永远不会超过corePoolSize，因为其他多于的线程被放入LinkedBlockingQueue队列，keepAliveTime参数也就没有意义。
+### 线程池核心数量与任务数关系
+如果线程数量 < corePoolSize 则直接执行任务，不放入扩展队列Queue中。
+```
+ThreadPoolExecutor executor = new ThreadPoolExecutor(7,8,5,TimeUnit.SECONDS,new LinkedBlockingDeque<Runnable>())
+```
+如果corePoolSize < 线程数量 < maximumPoolSize且队列使用LinkedBlockingDeque，则放入队列；如果队列使用SynchronousQueue类，会立即执行，且当时间keepAliveTime超过5秒时，清除空闲线程。
+BlockingQueue 常用的实现类LinkedBlockingQueue 和ArrayBlockingQueue。用 LinkedBlockingQueue的好处在于没有大小限制，所以执行execute()不会抛出异常。线程池中运行的线程数也永远不会超过corePoolSize，因为其他多于的线程被放入LinkedBlockingQueue队列，keepAliveTime参数也就没有意义。
 
 如果线程数量 > maximumPoolSize 且队列使用 LinkedBlockingQueue 则会放入队列；若队列使用 SynchronousQueue 则会抛出拒绝异常
 
@@ -115,7 +134,7 @@ public class ExecutorTest {
 }
 
 ```
-结果线程池执行shutdown()关闭之后，状态变为SHUTDOWN状态。此时如果再添加任务会抛出RejectedExecutionException异常，但线程池中的任务不会立刻退出，直到任务处理完成，线程池退出。说明 shutdown关闭线程池之后，线程（正在执行或是在队列中）还会正常执行
+结果线程池执行shutdown()关闭之后，状态变为SHUTDOWN状态。此时如果再添加任务会抛出RejectedExecutionException异常，但线程池中的任务不会立刻退出，直到任务处理完成，线程池退出。说明 shutdown 关闭线程池之后，线程（正在执行或是在队列中）还会正常执行
 
 shutdownNow()方法是使线程池的状态变为STOP状态，并试图停止所有正在执行的线程（如果有if判断则认为的抛出异常），不在处理还在队列中等待的任务，可以通过List<Runnable> list = pool.shutdownNow()返回那些未执行的任务。
 ```
@@ -256,7 +275,7 @@ public class ExecutorTest {
 }
 ```
 
-set/getRejectedExcutionHandler()
+### set/getRejectedExcutionHandler()
 实现RejectedExecutionHandler接口来处理任务被拒绝执行时的行为。
 ```
 public class ExecutorTest {
@@ -291,7 +310,7 @@ pool-1-thread-1 end 1480148853845
 ```
 allowsCoreThreadTimeOut()(boolean) 配置核心线程是否超时，超时则和其他线程一样清除
 
-getCompletedTaskCount()取得已经执行完成的任务数
+### getCompletedTaskCount()
 ```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
@@ -325,19 +344,19 @@ public class ExecutorTest {
 }
 ```
 
-线程池ThreadPoolExecutor的拒绝策略
+### 线程池ThreadPoolExecutor的拒绝策略
 线程池中的资源全部被占用的时候，读新添加的Task任务有不同的处理策略，在默认情况下，有四种处理方式：
 1. AbortPolicy：当任务添加到线程池被拒绝时，抛出RejectExecutionException异常
 2. CallerRunsPolicy：使用调用线程池的Thread线程对象处理被拒绝的任务
 3. DiscardOldestPolicy：线程池会放弃等待队列中最旧的未处理任务，然后将被拒绝的任务添加到等待队列中
 4. DiscardPolicy：线程池将丢弃被拒绝的任务
 
-1. AbortPolicy
+ * AbortPolicy
 ```
 ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 3, 5, TimeUnit.SECONDS, queue,
                 new ThreadPoolExecutor.AbortPolicy());
 ```
-2. CallerRunsPolicy
+ * CallerRunsPolicy
 由调用者处理被拒绝的任务
 ```
 MyRunnable2 myRunnable = new MyRunnable2();
@@ -366,7 +385,7 @@ a end
 end pool-1-thread-3
 end pool-1-thread-1
 ```
-3. DiscardOldestPolicy
+ * DiscardOldestPolicy
 ```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
@@ -403,10 +422,9 @@ Runnable6
 Runnable7
 Runnable6 run
 Runnable7 run
-
 }
 ```
-4. DiscardPolicy
+ * DiscardPolicy
 ```
 public class ExecutorTest {
     public static void main(String[] args) throws InterruptedException {
@@ -433,7 +451,7 @@ end pool-1-thread-1
 end pool-1-thread-3
 ```
 
-afterExecute()和beforeExecute()
+### afterExecute()和beforeExecute()
 重写这两个方法可以对线程池中执行的线程对象实施监控。
 ```
 public class MyThreadPoolExecutor extends ThreadPoolExecutor {
@@ -466,7 +484,7 @@ public static void main(String[] args) throws InterruptedException {
 ExecutorService可以使用remove方法移除未被执行的任务，前提是任务是使用execute()方式提交的；如果使用submit提交的任务，未被执行也不能删除此任务。
 
 ExecutorService中submit和execute的区别
-1. 接受的参数不一样
+ * 接受的参数不一样
 ExecutorService中的方法
 ```
 1) Future<?> submit(Runnable task);
@@ -477,8 +495,8 @@ Executor 接口唯一方法
 ```
 void execute(Runnable command);
 ```
-2. submit有返回值，而execute没有
-3. submit方便Exception处理
+ * submit有返回值，而execute没有
+ * submit方便Exception处理
 submit可以直接捕获异常，通过catch ExecutionException的方式
 ```
 public class RunTest {
@@ -561,7 +579,7 @@ public class ExecutorTest {
     }
 }
 ```
-get方法测试
+### get方法测试
 getActiveCount()正在执行任务的线程
 getPoolSize() 线程池中总共的线程
 getCompletedTaskCount()  已经任务执行完毕的线程

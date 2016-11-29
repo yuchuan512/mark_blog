@@ -3,14 +3,13 @@ date: 2016-11-28 22:33:24
 categories:
 tags:
 ---
-### invokeAny()和invokeAll()具有阻塞性
-在ThreadPoolExecutor中使用ExecutorService中的方法
-invokeAny()取得第一个完成任务的结果值，当第一个任务执行完成后，会调用interrupte()方法将其他任务中断，所有这些任务重可以结合 if(Thread.currentThread().isInterrupted()==true)代码来决定任务是否继续运行
-invokeAll() 等全部线程任务执行完毕后，取得全部完成任务的结果值。
+invokeAny()和invokeAll()具有阻塞性
+在ThreadPoolExecutor中使用ExecutorService中的方法**invokeAny()**取得第一个完成任务的结果值，当第一个任务执行完成后，会调用interrupt()方法将其他任务**中断**，所以这些任务可以结合 if(Thread.currentThread().isInterrupted()==true)来决定任务是否继续运行
+**invokeAll()** 等全部线程任务执行完毕后，取得全部完成任务的结果值。
 
-invokAny()在执行过程中出现两种情况
-1. 无if(Thread.currentThread.isInterrupted()) 已经获得结果之后，其他线程继续运行直到完成
-2. 有if(Thread.currentThread.isInterrupted()) 已经获得结果之后，其他线程中断处理
+### invokAny()与中断
+1. 无if(Thread.currentThread.isInterrupted())  invokAny()已经获得结果之后，其他线程继续运行直到完成
+2. 有if(Thread.currentThread.isInterrupted())  invokAny()已经获得结果之后，其他线程自己进行中断处理
 ```
 public class MyCallableB2 implements Callable<String> {
     @Override
@@ -30,7 +29,7 @@ public class MyCallableB2 implements Callable<String> {
                      * 此处涉及到中断sleep状态的线程，需要先让sleep退出阻塞状态
                      * 然后才能检测到isInterrupted信号，从而执行中断处理代码
                      * 参考 http://blog.csdn.net/canot/article/details/51087772
-                     * 该方法在县城阻塞时抛出一个中断信号，该信号将被catch语句捕获到，一旦捕获
+                     * 该方法在线程阻塞时抛出一个中断信号，该信号将被catch语句捕获到，一旦捕获
                      * 到这个信号，线程就提前终结自己的阻塞状态，就能再次运行run方法，然后检测中断标志位
                      * 进行后面的清理工作。
                      */
@@ -40,7 +39,6 @@ public class MyCallableB2 implements Callable<String> {
                 System.out.println("*****抛出异常了******");
                 throw new InterruptedException();
             }
-            System.out.println(Thread.currentThread().isInterrupted());
         }
         System.out.println("MyCallableB2 end");
         return "MyCallableB2";
@@ -50,6 +48,7 @@ public class MyCallableB2 implements Callable<String> {
 public class RunTest {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         ArrayList<Callable<String>> list = new ArrayList<>();
+        // 添加两个任务，一个有异常处理，一个没有异常处理
         list.add(new MyCallableA());
         list.add(new MyCallableB2());
         ExecutorService executor = Executors.newCachedThreadPool();
@@ -58,23 +57,20 @@ public class RunTest {
         executor.shutdown();
     }
 }
-结果
-MyCallableB2 6
-MyCallableA end 1480324168899
+结果可以看到，没有异常处理的任务正常执行完毕且返回结果；有异常处理的进入中断处理
 zzz returnA
-true
 *****抛出异常了******
 java.lang.InterruptedException: sleep interrupted
 	at java.lang.Thread.sleep(Native Method)
 ```
-### invokeAny异常
- * invokeAny()与执行慢的任务异常，执行慢的任务出现异常时，默认情况下不会再控制台输出异常信息。如果显式使用try...catch语句块则可以自定义捕获异常。加入显式的try-catch语句块可以捕获异常信息，但抛出的异常在main方法中没有捕获到，说明子线程出现异常是不影响main线程的主线程的。
- * invokeAny()与执行快的任务异常，先出现异常而不影响后面任务的取值的原理是在源代码中一直判断有没有正确的返回值，如果直到最后都没有获得返回值则抛出异常，这个异常是最后出现的异常。比如A，B，C三个任务一起执行，都出现了异常，则最终的异常就是最后出现的异常。
+### invokeAny异常情况总结
+ * invokeAny()与执行慢的任务异常。执行慢的任务出现异常时，默认情况下不会在控制台输出异常信息。如果显式使用try...catch语句块则可以自定义捕获异常。加入显式的try-catch语句块可以捕获异常信息，但抛出的异常在main方法中没有捕获到，说明子线程出现异常是不影响main线程的主线程的。
+ * invokeAny()与执行快的任务异常。先出现异常而不影响后面任务的取值的原理是在源代码中一直判断有没有正确的返回值，如果直到最后都没有获得返回值则抛出异常，这个异常是最后出现的异常。比如A，B，C三个任务一起执行，都出现了异常，则最终的异常就是最后出现的异常。
  * invokeAny()出现异常返回最后一个异常并输出。
 
 ### invokeAny超时处理
 invokeAny(Collection tasks,timeout,timeUnit)
-<T>T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)在指定的时间内取得第一个先执行完任务的结果值
+<T>T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)在指定的时间内取得第一个先执行完任务的结果值，若超出时间，则中断所有任务
 ```
 public class MyCallableA implements Callable<String> {
     @Override
@@ -87,9 +83,9 @@ public class MyCallableA implements Callable<String> {
                 Math.random();
                 System.out.println("MyCallA " + (i+1));
                 if(Thread.currentThread().isInterrupted()==true){
-                System.out.println(" is interrupted !");
-                throw new NullPointerException();
-            }
+                    System.out.println(" is interrupted !");
+                    throw new NullPointerException();
+                }
         }
         } catch (NullPointerException e) {
             e.printStackTrace();

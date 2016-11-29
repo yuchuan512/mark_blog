@@ -3,19 +3,17 @@ date: 2016-11-26 22:44:35
 categories:
 tags:
 ---
-1. Callable和Runnable的区别？
+### Callable和Runnable的区别？
 1) Callable接口的call()方法有返回值，而Runnable接口的run()方法没有返回值
 2) Callable接口的call()方法可以声明抛出异常，而Runnable接口的run()方法不可以声明抛出异常
 
-get()方法阻塞性
+### get()方法阻塞性
 ```
 public class MyCallable implements Callable<String> {
     private int age;
-
     public MyCallable(int age) {
         this.age = age;
     }
-
     @Override
     public String call() throws Exception {
         Thread.sleep(3000);
@@ -34,7 +32,7 @@ public class RunTest {
     }
 }
 ```
-submit()不仅可以传入Callable对象，还可以传入Runnable对象，说明submit()方法支持有返回值和五返回值的功能。
+submit()不仅可以传入Callable对象，还可以传入Runnable对象，说明submit()方法支持有返回值和无返回值的功能。
 ```
 public class MyRunnable implements Runnable {
     private UserInfo userInfo;

@@ -198,10 +198,10 @@ zzz return username2
 main end!
 time is 4
 ```
-### CompletionService 与 异常
+
 某一个任务失败不会影响这个任务执行之前成功的任务，却会导致之后的任务失败。
 
-Future<V> submit(Runnable task,V result)
+###  Future<V> submit(Runnable task,V result)方法
 ```
 public class RunTest {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
@@ -210,6 +210,7 @@ public class RunTest {
         UserInfo userInfo = new UserInfo();
         userInfo.setUsername("one");
         System.out.println("before " + userInfo.getUsername());
+        // 注：UserIno类的run方法会抛出异常
         MyRunnable myRunnable = new MyRunnable(userInfo);
         Future<UserInfo> future = csRef.submit(myRunnable, userInfo);
         System.out.println("after " + future.get().getUsername());
